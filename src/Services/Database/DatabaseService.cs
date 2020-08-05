@@ -13,17 +13,17 @@ namespace GenIVIV.Services.Database {
             _logger = logger;
         }
 
-        public bool TryGet<T>(object id, out T data) where T : IDataModel {
+        public bool TryGet<T>(string id, out T data) where T : IDataModel {
             data = default;
 
             using var database = new LiteDatabase(DATABASE_NAME);
             var collection = database.GetCollection<T>(Extensions.GetNameOfT<T>());
-            if (!collection.Exists(x => x.Id == $"{x.Id}")) {
+            if (!collection.Exists(x => x.Id == id)) {
                 _logger.LogError($"Couldn't find document with {id} id.");
                 return false;
             }
 
-            var document = collection.FindById($"{id}");
+            var document = collection.FindById(id);
             if (document == null) {
                 _logger.LogError($"Document of type {Extensions.GetNameOfT<T>()} returned null.");
                 return false;
@@ -56,16 +56,16 @@ namespace GenIVIV.Services.Database {
             return collection.Update(data);
         }
 
-        public static bool TryDelete<T>(object id) where T : IDataModel {
+        public static bool TryDelete<T>(string id) where T : IDataModel {
             using var database = new LiteDatabase(DATABASE_NAME);
             var collection = database.GetCollection<T>(Extensions.GetNameOfT<T>());
             return collection.Delete($"{id}");
         }
 
-        public static bool Exists<T>(object id) where T : IDataModel {
+        public static bool Exists<T>(string id) where T : IDataModel {
             using var database = new LiteDatabase(DATABASE_NAME);
             var collection = database.GetCollection<T>(Extensions.GetNameOfT<T>());
-            return collection.Exists(x => x.Id == $"{id}");
+            return collection.Exists(x => x.Id == id);
         }
     }
 }

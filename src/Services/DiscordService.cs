@@ -52,11 +52,11 @@ namespace GenIVIV.Services {
         }
 
         private Task OnGuildLeftAsync(SocketGuild socketGuild) {
-            if (!DatabaseService.Exists<GuildDataModel>(socketGuild.Id)) {
+            if (!DatabaseService.Exists<GuildDataModel>($"{socketGuild.Id}")) {
                 return Task.CompletedTask;
             }
 
-            if (!DatabaseService.TryDelete<GuildDataModel>(socketGuild.Id)) {
+            if (!DatabaseService.TryDelete<GuildDataModel>($"{socketGuild.Id}")) {
                 _logger.LogCritical(
                     $"Failed to delete document of type {nameof(GuildDataModel)} with id {socketGuild.Id}");
             }
@@ -65,7 +65,7 @@ namespace GenIVIV.Services {
         }
 
         private Task OnGuildAvailableAsync(SocketGuild socketGuild) {
-            if (_databaseService.TryGet<GuildDataModel>(socketGuild.Id, out var guildDataModel)) {
+            if (_databaseService.TryGet<GuildDataModel>($"{socketGuild.Id}", out var guildDataModel)) {
                 return Task.CompletedTask;
             }
 
