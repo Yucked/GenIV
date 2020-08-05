@@ -3,15 +3,19 @@ using System.Threading.Tasks;
 using Discord.WebSocket;
 using GenIVIV.Services.Database;
 using GenIVIV.Services.Database.DataModels;
+using Microsoft.Extensions.Logging;
 
 namespace GenIVIV.Services {
     public sealed class StudyService {
         private readonly DiscordSocketClient _socketClient;
         private readonly DatabaseService _databaseService;
+        private readonly ILogger _logger;
 
-        public StudyService(DiscordSocketClient socketClient, DatabaseService databaseService) {
+        public StudyService(DiscordSocketClient socketClient, DatabaseService databaseService,
+                            ILogger<StudyService> logger) {
             _socketClient = socketClient;
             _databaseService = databaseService;
+            _logger = logger;
             _socketClient.MessageReceived += OnMessageAsync;
         }
 
@@ -30,7 +34,7 @@ namespace GenIVIV.Services {
                     Messages = new HashSet<string>(),
                     Username = socketMessage.Author.Username
                 };
-                
+
                 studyMessage.Messages.Add(socketMessage.Content);
                 studyDataModel.UserMessages.Add(socketMessage.Author.Id, studyMessage);
                 _databaseService.TryStore(studyDataModel);
@@ -39,7 +43,11 @@ namespace GenIVIV.Services {
 
             if (studyDataModel.UserMessages.TryGetValue(socketMessage.Author.Id, out var userMessages)) {
                 userMessages.Messages.Add(socketMessage.Content);
-                _databaseService.TryUpdate(studyDataModel);
+                if (DatabaseService.TryUpdate(studyDataModel)) {
+                    return;
+                }
+
+                _logger.LogCritical($"Failed to save document with {studyDataModel.Id}");
                 return;
             }
 
@@ -49,7 +57,11 @@ namespace GenIVIV.Services {
             };
             userMessages.Messages.Add(socketMessage.Content);
             studyDataModel.UserMessages.TryAdd(socketMessage.Author.Id, userMessages);
-            _databaseService.TryUpdate(studyDataModel);
+            if (DatabaseService.TryUpdate(studyDataModel)) {
+                return;
+            }
+
+            _logger.LogCritical($"Failed to save document with {studyDataModel.Id}");
         }
     }
 }
