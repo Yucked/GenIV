@@ -44,7 +44,39 @@ namespace GenIVIV.Services {
             _socketClient.Ready += OnReadyAsync;
             _socketClient.MessageReceived += OnMessageReceivedAsync;
 
+            _socketClient.GuildAvailable += OnGuildAvailableAsync;
+            _socketClient.JoinedGuild += OnGuildAvailableAsync;
+            _socketClient.LeftGuild += OnGuildLeftAsync;
+
             _databaseService.TryGet("Configuration", out _configData);
+        }
+
+        private Task OnGuildLeftAsync(SocketGuild socketGuild) {
+            if (!DatabaseService.Exists<GuildDataModel>(socketGuild.Id)) {
+                return Task.CompletedTask;
+            }
+
+            if (!DatabaseService.TryDelete<GuildDataModel>(socketGuild.Id)) {
+                _logger.LogCritical(
+                    $"Failed to delete document of type {nameof(GuildDataModel)} with id {socketGuild.Id}");
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private Task OnGuildAvailableAsync(SocketGuild socketGuild) {
+            if (_databaseService.TryGet<GuildDataModel>(socketGuild.Id, out var guildDataModel)) {
+                return Task.CompletedTask;
+            }
+
+            guildDataModel = new GuildDataModel {
+                Id = $"{socketGuild.Id}",
+                Prefix = '!',
+                WelcomeMessage = "Hey hey nice hussle tons of fun! Next time eat a salad."
+            };
+
+            _databaseService.TryStore(guildDataModel);
+            return Task.CompletedTask;
         }
 
         public async Task InitializeAsync() {
@@ -71,7 +103,7 @@ namespace GenIVIV.Services {
                 && !(_configData.IsMentionEnabled &&
                      userMessage.HasMentionPrefix(_socketClient.CurrentUser, ref argPos))
                 && !(_databaseService.TryGet<GuildDataModel>($"{guild.Id}", out var guildData) &&
-                    userMessage.HasCharPrefix(guildData.Prefix, ref argPos))) {
+                     userMessage.HasCharPrefix(guildData.Prefix, ref argPos))) {
                 return;
             }
 
